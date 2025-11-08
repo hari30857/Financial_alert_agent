@@ -7,9 +7,7 @@ import os
 import json
 import re
 
-# -------------------------------------------------------
-# 1️⃣ Setup: Load API key and Initialize FastAPI + spaCy
-# -------------------------------------------------------
+
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -24,9 +22,6 @@ except OSError:
     nlp = spacy.load("en_core_web_sm")
 
 
-# -------------------------------------------------------
-# 2️⃣ Define Request and Response Models
-# -------------------------------------------------------
 class AnalysisRequest(BaseModel):
     article_text: str
 
@@ -41,9 +36,6 @@ class AnalysisResponse(BaseModel):
     entities: dict[str, list[str]]
 
 
-# -------------------------------------------------------
-# 3️⃣ Helper Function — Clean JSON from Gemini output
-# -------------------------------------------------------
 def extract_json_from_text(text: str) -> dict:
     """Safely extracts JSON-like content from Gemini responses."""
     try:
@@ -57,9 +49,6 @@ def extract_json_from_text(text: str) -> dict:
         raise ValueError("Gemini did not return valid JSON")
 
 
-# -------------------------------------------------------
-# 4️⃣ Main Analysis Endpoint
-# -------------------------------------------------------
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_article(request: AnalysisRequest):
     article_text = request.article_text.strip()
@@ -135,9 +124,6 @@ async def analyze_article(request: AnalysisRequest):
             status_code=500, detail="Gemini response parsing failed.")
 
 
-# -------------------------------------------------------
-# 5️⃣ Health Check Endpoint
-# -------------------------------------------------------
 @app.get("/")
 def root():
     return {"message": "✅ Financial Alert Agent backend is running with Gemini 2.5 Flash!"}
