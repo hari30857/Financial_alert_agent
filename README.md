@@ -125,11 +125,4 @@ Reputational Risk	Damage to brand trust due to scandals or bad publicity.
 B.Tech – Computer Science (AI & ML)
 KL University
 
-🏁 Hackathon Info
-This project was created for AgenThink Hackathon 2025.
-It follows the official Gemini + FastAPI + Streamlit architecture and fully aligns with the submission guidelines.
-
-🪪 License
-For educational and hackathon demonstration purposes only.
-
 ⭐ If you found this project useful, don’t forget to star the repo on GitHub! 🌟
