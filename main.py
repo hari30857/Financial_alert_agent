@@ -7,13 +7,11 @@ import os
 import json
 import re
 
-
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-app = FastAPI(title="Financial News Risk Analyzer")
+app = FastAPI(title="Financial News Risk Analyzer + Q&A")
 
-# Load spaCy NER model
 try:
     nlp = spacy.load("en_core_web_sm")
 except OSError:
@@ -37,7 +35,6 @@ class AnalysisResponse(BaseModel):
 
 
 def extract_json_from_text(text: str) -> dict:
-    """Safely extracts JSON-like content from Gemini responses."""
     try:
         match = re.search(r"\{.*\}", text, re.DOTALL)
         if match:
@@ -52,12 +49,10 @@ def extract_json_from_text(text: str) -> dict:
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_article(request: AnalysisRequest):
     article_text = request.article_text.strip()
-
     if not article_text:
         raise HTTPException(
             status_code=400, detail="Article text cannot be empty.")
 
-    # --- Named Entity Recognition (spaCy) ---
     doc = nlp(article_text)
     entities = {"organizations": [], "persons": [], "locations": []}
 
@@ -69,11 +64,9 @@ async def analyze_article(request: AnalysisRequest):
         elif ent.label_ == "GPE":
             entities["locations"].append(ent.text)
 
-    # Deduplicate
     for k in entities:
         entities[k] = list(set(entities[k]))
 
-    # --- Gemini Prompt ---
     prompt = f"""
     You are a financial analyst AI. Analyze this financial news article and return a JSON with these fields:
     {{
@@ -98,14 +91,13 @@ async def analyze_article(request: AnalysisRequest):
 
         cleaned = extract_json_from_text(response.text)
 
-        # --- Safely convert risk_score to int ---
+        # --- Convert Risk Score Safely ---
         risk_score = cleaned.get("risk_score", 0)
         try:
             risk_score = int(float(risk_score))
         except:
             risk_score = 0
 
-        # --- Return formatted API response ---
         return AnalysisResponse(
             summary=cleaned.get("summary", "N/A"),
             sentiment=cleaned.get("sentiment", "N/A"),
@@ -124,6 +116,36 @@ async def analyze_article(request: AnalysisRequest):
             status_code=500, detail="Gemini response parsing failed.")
 
 
+# --- 🧠 NEW: Q&A Chat Endpoint ---
+@app.post("/chat")
+async def chat_with_agent(request: dict):
+    question = request.get("question", "").strip()
+    context = request.get("context", "").strip()
+
+    if not question:
+        raise HTTPException(
+            status_code=400, detail="Question cannot be empty.")
+
+    model = genai.GenerativeModel("models/gemini-2.5-flash")
+    prompt = f"""
+    You are a financial analysis assistant.
+    Use the given analysis context to answer the user's question.
+    Keep your explanation analytical and educational — do not give financial advice.
+
+    Context:
+    {context}
+
+    Question:
+    {question}
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        return {"answer": response.text.strip()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/")
 def root():
-    return {"message": "✅ Financial Alert Agent backend is running with Gemini 2.5 Flash!"}
+    return {"message": "✅ Financial Alert Agent backend running with Q&A support!"}
